@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
+	mw "github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 )
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func main() {
 
 	server := &http.Server{
 		Addr: port,
-		Handler: middlewares.SecurityHeaders(mux),
+		Handler: mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))),
 		TLSConfig: tlsConfig,
 	}
 
