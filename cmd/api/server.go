@@ -1,43 +1,94 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 )
+
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Server Healthy"))
+		fmt.Println("Server Healthy")
+}
+
+func teachersHandler(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+		case http.MethodGet:
+			fmt.Println("Placeholder")
+		case http.MethodPost:
+			fmt.Println("Placeholder")
+		case http.MethodDelete:
+			fmt.Println("Placeholder")
+		case http.MethodPut:
+			fmt.Println("Placeholder")
+		case http.MethodPatch:
+			fmt.Println("Placeholder")
+	}
+}
+
+func studentsHandler(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+		case http.MethodGet:
+			fmt.Println("Placeholder")
+		case http.MethodPost:
+			fmt.Println("Placeholder")
+		case http.MethodDelete:
+			fmt.Println("Placeholder")
+		case http.MethodPut:
+			fmt.Println("Placeholder")
+		case http.MethodPatch:
+			fmt.Println("Placeholder")
+	}
+}
+
+func execsHandler(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+		case http.MethodGet:
+			fmt.Println("Placeholder")
+		case http.MethodPost:
+			fmt.Println("Placeholder")
+		case http.MethodDelete:
+			fmt.Println("Placeholder")
+		case http.MethodPut:
+			fmt.Println("Placeholder")
+		case http.MethodPatch:
+			fmt.Println("Placeholder")
+	}
+}
+
 
 func main() {
 
 	port := ":3000"
+	cert := "cert.pem"
+	key := "key.pem"
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request){
-		// fmt.Fprintf(w, "Hello Root")
-		w.Write([]byte("Hello Root"))
-		fmt.Println("Hello Root")
-	})
+	mux := http.NewServeMux()
 
-	http.HandleFunc("/teachers", func(w http.ResponseWriter, r *http.Request){
-		if r.Method == http.MethodGet {
-			w.Write([]byte("Hello GET Method on Teachers"))
-			fmt.Println("Hello GET Method on Teachers")
-			return 
-		}
-		w.Write([]byte("Hello Teachers Route"))
-		fmt.Println("Hello Teachers Route")
-	})
+	mux.HandleFunc("/", rootHandler)
 
-	http.HandleFunc("/students", func(w http.ResponseWriter, r *http.Request){
-		w.Write([]byte("Hello Students Route"))
-		fmt.Println("Hello Students Route")
-	})
+	mux.HandleFunc("/teachers", teachersHandler)
+	mux.HandleFunc("/students", studentsHandler)
+	mux.HandleFunc("/execs", execsHandler)
 
-	http.HandleFunc("/execs", func(w http.ResponseWriter, r *http.Request){
-		w.Write([]byte("Hello Execs Route"))
-		fmt.Println("Hello Execs Route")
-	})
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+
+	server := &http.Server{
+		Addr: port,
+		Handler: middlewares.SecurityHeaders(mux),
+		TLSConfig: tlsConfig,
+	}
 
 	fmt.Println("Server is running on port: ", port)
-	err := http.ListenAndServe(port, nil)
+	err := server.ListenAndServeTLS(cert, key)	
 	if err != nil {
 		log.Fatalln("Error starting the server", err)
 	}
