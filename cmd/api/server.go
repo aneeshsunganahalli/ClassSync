@@ -83,7 +83,7 @@ func main() {
 
 	server := &http.Server{
 		Addr: port,
-		Handler: mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))),
+		Handler: mw.CompressionHandler(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux)))),
 		TLSConfig: tlsConfig,
 	}
 
