@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 	mw "github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 )
 
@@ -70,6 +72,7 @@ func main() {
 	key := "key.pem"
 
 	mux := http.NewServeMux()
+	rl := middlewares.NewRateLimiter(5, time.Minute)
 
 	mux.HandleFunc("/", rootHandler)
 
@@ -83,7 +86,7 @@ func main() {
 
 	server := &http.Server{
 		Addr: port,
-		Handler: mw.CompressionHandler(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux)))),
+		Handler: rl.Middleware(mw.CompressionHandler(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))),
 		TLSConfig: tlsConfig,
 	}
 
