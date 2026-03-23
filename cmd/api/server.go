@@ -54,7 +54,16 @@ func execsHandler(w http.ResponseWriter, r *http.Request) {
 		case http.MethodGet:
 			fmt.Println("Placeholder")
 		case http.MethodPost:
-			fmt.Println("Placeholder")
+			fmt.Println("Query: ", r.URL.Query())
+			fmt.Println("name: ", r.URL.Query().Get("name"))
+
+			err := r.ParseForm() 
+				if err != nil {
+					fmt.Println(err)
+					return
+			}
+			fmt.Println("Form from POST: ", r.Form)
+
 		case http.MethodDelete:
 			fmt.Println("Placeholder")
 		case http.MethodPut:
@@ -84,9 +93,17 @@ func main() {
 		MinVersion: tls.VersionTLS12,
 	}
 
+	hppOptions := mw.HPPOptions{
+		CheckQuery: true,
+		CheckParams: true,
+		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+		Whitelist: []string{"sortBy", "name", "max"},
+	}
+	secureMux := mw.Hpp(hppOptions)(rl.Middleware(mw.CompressionHandler(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))))
+
 	server := &http.Server{
 		Addr: port,
-		Handler: rl.Middleware(mw.CompressionHandler(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.Cors(mux))))),
+		Handler: secureMux,
 		TLSConfig: tlsConfig,
 	}
 
