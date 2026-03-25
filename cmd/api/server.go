@@ -9,69 +9,14 @@ import (
 
 	"github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 	mw "github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
+	"github.com/aneeshsunganahalli/ClassSync/internal/api/router"
+	"github.com/aneeshsunganahalli/ClassSync/pkg/utils"
 )
 
-func rootHandler(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Server Healthy"))
-		fmt.Println("Server Healthy")
-}
 
-func teachersHandler(w http.ResponseWriter, r *http.Request) {
 
-	switch r.Method {
-		case http.MethodGet:
-			fmt.Println("Placeholder")
-		case http.MethodPost:
-			fmt.Println("Placeholder")
-		case http.MethodDelete:
-			fmt.Println("Placeholder")
-		case http.MethodPut:
-			fmt.Println("Placeholder")
-		case http.MethodPatch:
-			fmt.Println("Placeholder")
-	}
-}
 
-func studentsHandler(w http.ResponseWriter, r *http.Request) {
 
-	switch r.Method {
-		case http.MethodGet:
-			fmt.Println("Placeholder")
-		case http.MethodPost:
-			fmt.Println("Placeholder")
-		case http.MethodDelete:
-			fmt.Println("Placeholder")
-		case http.MethodPut:
-			fmt.Println("Placeholder")
-		case http.MethodPatch:
-			fmt.Println("Placeholder")
-	}
-}
-
-func execsHandler(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-		case http.MethodGet:
-			fmt.Println("Placeholder")
-		case http.MethodPost:
-			fmt.Println("Query: ", r.URL.Query())
-			fmt.Println("name: ", r.URL.Query().Get("name"))
-
-			err := r.ParseForm() 
-				if err != nil {
-					fmt.Println(err)
-					return
-			}
-			fmt.Println("Form from POST: ", r.Form)
-
-		case http.MethodDelete:
-			fmt.Println("Placeholder")
-		case http.MethodPut:
-			fmt.Println("Placeholder")
-		case http.MethodPatch:
-			fmt.Println("Placeholder")
-	}
-}
 
 
 func main() {
@@ -80,14 +25,7 @@ func main() {
 	cert := "cert.pem"
 	key := "key.pem"
 
-	mux := http.NewServeMux()
-	rl := middlewares.NewRateLimiter(5, time.Minute)
-
-	mux.HandleFunc("/", rootHandler)
-
-	mux.HandleFunc("/teachers", teachersHandler)
-	mux.HandleFunc("/students", studentsHandler)
-	mux.HandleFunc("/execs", execsHandler)
+	rl := middlewares.NewRateLimiter(10, time.Minute)
 
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
@@ -97,11 +35,14 @@ func main() {
 		CheckQuery: true,
 		CheckParams: true,
 		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-		Whitelist: []string{"sortBy", "name", "max"},
+		Whitelist: []string{"sortBy", "name", "max", "first_name", "last_name"},
 	}
 
 	// Maintain logical order of when to apply which middleware
-	secureMux :=  mw.Cors(rl.Middleware(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.CompressionHandler(mw.Hpp(hppOptions)(mux))))))
+	// secureMux :=  mw.Cors(rl.Middleware(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.CompressionHandler(mw.Hpp(hppOptions)(mux))))))
+
+	router := router.Router()
+	secureMux := utils.ApplyMiddlewares(router, mw.Cors, rl.Middleware, mw.ResponseTimeMiddleware, mw.SecurityHeaders, mw.CompressionHandler, mw.Hpp(hppOptions))
 
 	server := &http.Server{
 		Addr: port,
@@ -116,3 +57,6 @@ func main() {
 	}
 	
 }
+
+
+
