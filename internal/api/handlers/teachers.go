@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/aneeshsunganahalli/ClassSync/internal/models"
@@ -52,34 +55,86 @@ func TeachersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
+	db, err := sqlconnect.ConnectDb()
+	if err != nil {
+		return
+	}
 
-	lastName := r.URL.Query().Get("last_name")
-	firstName := r.URL.Query().Get("first_name")
+	defer db.Close()
 
-	fmt.Println(r.URL.Query())
+	path := strings.TrimPrefix(r.URL.Path, "/teachers/")
+	idStr := strings.TrimSuffix(path, "/")
+	fmt.Println(idStr)
 
-	// DEBUG: Look at your terminal when you refresh the browser
-	fmt.Printf("Filtering for: Last='%s', First='%s'\n", lastName, firstName)
+	if idStr == "" {
 
-	teacherList := make([]models.Teacher, 0, len(teachers))
-	for _, teacher := range teachers {
-		if (lastName == "" || lastName == teacher.LastName) && (firstName == "" || teacher.FirstName == firstName) {
-			fmt.Printf("Checking %s %s against %s %s\n", teacher.FirstName, teacher.LastName, firstName, lastName)
+		lastName := r.URL.Query().Get("last_name")
+		firstName := r.URL.Query().Get("first_name")
+
+		query := "Select id, first_name, last_name, email, class, subject From teachers Where 1=1"
+		var args []interface{}
+
+		if firstName != "" {
+			query += " AND first_name = ?"
+			args = append(args, firstName)
+		}
+		if lastName != "" {
+			query += " And last_name = ?"
+			args = append(args, lastName)
+		}
+
+		rows, err := db.Query(query, args...)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Database Query Error", http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		teacherList := make([]models.Teacher, 0, len(teachers))
+		for rows.Next() {
+			var teacher models.Teacher
+			err := rows.Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
+			if err != nil {
+				http.Error(w, "Error scanning database", http.StatusInternalServerError)
+				return
+			}
 			teacherList = append(teacherList, teacher)
 		}
+		
+
+		response := struct {
+			Status string           `json:"status"`
+			Count  int              `json:"count"`
+			Data   []models.Teacher `json:"data"`
+		}{
+			Status: "Success",
+			Count:  len(teacherList),
+			Data:   teacherList,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
 	}
 
-	response := struct {
-		Status string           `json:"status"`
-		Count  int              `json:"count"`
-		Data   []models.Teacher `json:"data"`
-	}{
-		Status: "Success",
-		Count:  len(teacherList),
-		Data:   teacherList,
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	var teacher models.Teacher
+	err = db.QueryRow("Select id, first_name, last_name, email, class, subject FROM teachers WHERE id = ?", id).Scan(&teacher.ID, &teacher.FirstName, &teacher.LastName, &teacher.Email, &teacher.Class, &teacher.Subject)
+	if err == sql.ErrNoRows {
+		http.Error(w, "Teacher doesn't exist", http.StatusNotFound)
+		return
+	} else if err != nil {
+		fmt.Println(err)
+		http.Error(w, "Database query error", http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(teacher)
 }
 
 func addTeachersHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,8 +181,8 @@ func addTeachersHandler(w http.ResponseWriter, r *http.Request) {
 		Data   []models.Teacher `json:"data"`
 	}{
 		Status: "Success",
-		Count: len(addedTeachers),
-		Data: addedTeachers,
+		Count:  len(addedTeachers),
+		Data:   addedTeachers,
 	}
 	json.NewEncoder(w).Encode(response)
 }

@@ -6,13 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
+	// "time"
 
-	"github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
+	// "github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 	mw "github.com/aneeshsunganahalli/ClassSync/internal/api/middlewares"
 	"github.com/aneeshsunganahalli/ClassSync/internal/api/router"
 	"github.com/aneeshsunganahalli/ClassSync/internal/repository/sqlconnect"
-	"github.com/aneeshsunganahalli/ClassSync/pkg/utils"
+	// "github.com/aneeshsunganahalli/ClassSync/pkg/utils"
 
 	"github.com/joho/godotenv"
 )
@@ -35,25 +35,26 @@ func main() {
 	cert := "cert.pem"
 	key := "key.pem"
 
-	rl := middlewares.NewRateLimiter(10, time.Minute)
+	// rl := middlewares.NewRateLimiter(10, time.Minute)
 
 
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
 
-	hppOptions := mw.HPPOptions{
-		CheckQuery: true,
-		CheckParams: true,
-		CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
-		Whitelist: []string{"sortBy", "name", "max", "first_name", "last_name"},
-	}
+	// hppOptions := mw.HPPOptions{
+	// 	CheckQuery: true,
+	// 	CheckParams: true,
+	// 	CheckBodyOnlyForContentType: "application/x-www-form-urlencoded",
+	// 	Whitelist: []string{"sortBy", "name", "max", "first_name", "last_name"},
+	// }
 
 	// Maintain logical order of when to apply which middleware
 	// secureMux :=  mw.Cors(rl.Middleware(mw.ResponseTimeMiddleware(mw.SecurityHeaders(mw.CompressionHandler(mw.Hpp(hppOptions)(mux))))))
 
 	router := router.Router()
-	secureMux := utils.ApplyMiddlewares(router, mw.Cors, rl.Middleware, mw.ResponseTimeMiddleware, mw.SecurityHeaders, mw.CompressionHandler, mw.Hpp(hppOptions))
+	// secureMux := utils.ApplyMiddlewares(router, mw.Cors, rl.Middleware, mw.ResponseTimeMiddleware, mw.SecurityHeaders, mw.CompressionHandler, mw.Hpp(hppOptions))
+	secureMux := mw.SecurityHeaders(router)
 
 	server := &http.Server{
 		Addr: port,
