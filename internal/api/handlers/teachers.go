@@ -57,6 +57,7 @@ func TeachersHandler(w http.ResponseWriter, r *http.Request) {
 func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	db, err := sqlconnect.ConnectDb()
 	if err != nil {
+		http.Error(w, "Database connection error", http.StatusInternalServerError)
 		return
 	}
 
@@ -67,24 +68,16 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(idStr)
 
 	if idStr == "" {
-
-		lastName := r.URL.Query().Get("last_name")
-		firstName := r.URL.Query().Get("first_name")
-
 		query := "Select id, first_name, last_name, email, class, subject From teachers Where 1=1"
 		var args []interface{}
 
-		if firstName != "" {
-			query += " AND first_name = ?"
-			args = append(args, firstName)
-		}
-		if lastName != "" {
-			query += " And last_name = ?"
-			args = append(args, lastName)
-		}
+		query, args = addFilter(r, query, args)
+
+		query = applySorting(r, query)
 
 		rows, err := db.Query(query, args...)
 		if err != nil {
+			fmt.Println(query)
 			fmt.Println(err)
 			http.Error(w, "Database Query Error", http.StatusInternalServerError)
 			return
@@ -101,7 +94,10 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			teacherList = append(teacherList, teacher)
 		}
-		
+		if err := rows.Err(); err != nil {
+			http.Error(w, "Database rows error", http.StatusInternalServerError)
+			return
+		}
 
 		response := struct {
 			Status string           `json:"status"`
@@ -115,6 +111,7 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	id, err := strconv.Atoi(idStr)
@@ -137,9 +134,55 @@ func getTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(teacher)
 }
 
+func applySorting(r *http.Request, query string) string {
+	sortParams := r.URL.Query()["sortby"]
+	if len(sortParams) > 0 {
+		fmt.Println(sortParams)
+		query += " ORDER BY"
+		for i, param := range sortParams {
+			parts := strings.Split(param, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			field, order := parts[0], parts[1]
+			if !isValidOrder(order) || !isValidField(field) {
+				continue
+			}
+
+			if i > 0 {
+				query += ","
+			}
+
+			query += " " + field + " " + order
+		}
+	}
+	return query
+}
+
+func addFilter(r *http.Request, query string, args []interface{}) (string, []interface{}) {
+	var params = map[string]string{
+		"first_name": "first_name",
+		"last_name":  "last_name",
+		"email":      "email",
+		"class":      "class",
+		"subject":    "subject",
+	}
+
+	for param, dbField := range params {
+		value := r.URL.Query().Get(param)
+		if value == "" {
+			continue
+		}
+		query += " AND " + dbField + " = ? "
+		args = append(args, value)
+	}
+	return query, args
+}
+
 func addTeachersHandler(w http.ResponseWriter, r *http.Request) {
 	db, err := sqlconnect.ConnectDb()
 	if err != nil {
+		http.Error(w, "Database connection error", http.StatusInternalServerError)
 		return
 	}
 
@@ -185,4 +228,19 @@ func addTeachersHandler(w http.ResponseWriter, r *http.Request) {
 		Data:   addedTeachers,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+func isValidOrder(order string) bool {
+	return order == "asc" || order == "desc"
+}
+
+func isValidField(field string) bool {
+	var validString = map[string]bool{
+		"first_name": true,
+		"last_name":  true,
+		"email":      true,
+		"class":      true,
+		"subject":    true,
+	}
+	return validString[field]
 }
