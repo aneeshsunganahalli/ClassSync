@@ -21,7 +21,7 @@ import (
 
 func main() {
 
-	err := godotenv.Load(".env", "cmd/api/.env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		fmt.Println("Warning: .env file not found, using environment variables")
 	}
