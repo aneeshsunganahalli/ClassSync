@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -298,7 +299,6 @@ func patchTeachersHandler(w http.ResponseWriter, r *http.Request){
 
 	var existingTeacher models.Teacher
 	err = db.QueryRow("SELECT id, first_name, last_name, email, class, subject FROM teachers where id = ?", id).Scan(&existingTeacher.ID, &existingTeacher.FirstName, &existingTeacher.LastName, &existingTeacher.Email, &existingTeacher.Class, &existingTeacher.Subject, )
-	fmt.Println(existingTeacher)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -310,18 +310,37 @@ func patchTeachersHandler(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	// for k, v := range updates {
+	// 	switch k {
+	// 	case  "firstname":
+	// 		existingTeacher.FirstName = v.(string)
+	// 	case "last_name":
+	// 		existingTeacher.LastName = v.(string)
+	// 	case "email":
+	// 		existingTeacher.Email = v.(string)
+	// 	case "class":
+	// 		existingTeacher.Class = v.(string)
+	// 	case "subject": 
+	// 		existingTeacher.Subject = v.(string)
+	// 	}
+	// }
+
+	teacherVal := reflect.ValueOf(&existingTeacher).Elem()
+	teacherType := teacherVal.Type()
+	fmt.Println(teacherType)
+
 	for k, v := range updates {
-		switch k {
-		case  "firstname":
-			existingTeacher.FirstName = v.(string)
-		case "last_name":
-			existingTeacher.LastName = v.(string)
-		case "email":
-			existingTeacher.Email = v.(string)
-		case "class":
-			existingTeacher.Class = v.(string)
-		case "subject": 
-			existingTeacher.Subject = v.(string)
+		for i := 0; i < teacherVal.NumField(); i++ {
+			field := teacherType.Field(i)
+			
+			if field.Tag.Get("json") == k+",omitempty" {
+				if teacherVal.Field(i).CanSet() {
+
+					fieldVal := teacherVal.Field(i)
+					
+					fieldVal.Set(reflect.ValueOf(v).Convert(fieldVal.Type()))
+				}
+			}
 		}
 	}
 
